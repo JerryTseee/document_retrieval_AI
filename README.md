@@ -1,5 +1,9 @@
-# Document Retrieval AI
+## Document Retrieval AI
 It is a web-base AI tool that can help you to retrieve the required documents from the database according to your uploaded pdf file. It also supports some AI chatbot functions.
+
+## User Interface
+![image](https://github.com/user-attachments/assets/490c2707-4b9a-4108-bbe1-050515f55ed0)
+![image](https://github.com/user-attachments/assets/aaca2f95-fc0a-413f-a596-cb0a56392973)
 
 
 ## Folder Structure
