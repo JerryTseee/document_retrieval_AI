@@ -1,19 +1,6 @@
 # Document Retrieval AI
 It is a web-base AI tool that can help you to retrieve the required documents from the database according to your uploaded pdf file. It also supports some AI chatbot functions.
 
-## Quick Setup
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.dev/chat/projects/cgxGwO6hZdI](https://v0.dev/chat/projects/cgxGwO6hZdI)**
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
-
 
 ## Folder Structure
 \`\`\`
