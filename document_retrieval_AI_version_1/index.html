@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Document Matcher</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(214.3 31.8% 91.4%)",
+                        input: "hsl(214.3 31.8% 91.4%)",
+                        ring: "hsl(222.2 84% 4.9%)",
+                        background: "hsl(0 0% 100%)",
+                        foreground: "hsl(222.2 84% 4.9%)",
+                        primary: {
+                            DEFAULT: "hsl(222.2 47.4% 11.2%)",
+                            foreground: "hsl(210 40% 98%)",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(210 40% 96%)",
+                            foreground: "hsl(222.2 84% 4.9%)",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(0 84.2% 60.2%)",
+                            foreground: "hsl(210 40% 98%)",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(210 40% 96%)",
+                            foreground: "hsl(215.4 16.3% 46.9%)",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(210 40% 96%)",
+                            foreground: "hsl(222.2 84% 4.9%)",
+                        },
+                        popover: {
+                            DEFAULT: "hsl(0 0% 100%)",
+                            foreground: "hsl(222.2 84% 4.9%)",
+                        },
+                        card: {
+                            DEFAULT: "hsl(0 0% 100%)",
+                            foreground: "hsl(222.2 84% 4.9%)",
+                        },
+                    },
+                    borderRadius: {
+                        lg: "0.5rem",
+                        md: "calc(0.5rem - 2px)",
+                        sm: "calc(0.5rem - 4px)",
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chat-message {
+            white-space: pre-wrap;
+        }
+
+        .typing-indicator span {
+            animation: blink 1.4s infinite both;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes blink {
+            0% { opacity: 0.1; }
+            20% { opacity: 1; }
+            100% { opacity: 0.1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Icon Components
+        const Upload = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+        );
+
+        const FileText = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+        );
+
+        const Search = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        );
+
+        const Download = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+        );
+
+        const CheckCircle = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+
+        const AlertCircle = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+
+        const FolderOpen = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+            </svg>
+        );
+
+        const Trash2 = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+        );
+
+        const Wifi = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+            </svg>
+        );
+
+        const Send = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+        );
+
+        const ChatIcon = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+        );
+
+        const UserIcon = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+        );
+
+        const BotIcon = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+        );
+
+        const KeyIcon = ({ className = "w-4 h-4" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+        );
+
+        // UI Components
+        const Button = ({ children, className = "", variant = "default", size = "default", disabled = false, onClick, ...props }) => {
+            const baseClasses = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
+            
+            const variants = {
+                default: "bg-primary text-primary-foreground hover:bg-primary/90",
+                outline: "border border-input hover:bg-accent hover:text-accent-foreground",
+                ghost: "hover:bg-accent hover:text-accent-foreground",
+            };
+            
+            const sizes = {
+                default: "h-10 py-2 px-4",
+                sm: "h-9 px-3 rounded-md",
+                lg: "h-11 px-8 rounded-md",
+            };
+            
+            return (
+                <button
+                    className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+                    disabled={disabled}
+                    onClick={onClick}
+                    {...props}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        const Card = ({ children, className = "" }) => (
+            <div className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className}`}>
+                {children}
+            </div>
+        );
+
+        const CardHeader = ({ children, className = "" }) => (
+            <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const CardTitle = ({ children, className = "" }) => (
+            <h3 className={`text-lg font-semibold leading-none tracking-tight ${className}`}>
+                {children}
+            </h3>
+        );
+
+        const CardDescription = ({ children, className = "" }) => (
+            <p className={`text-sm text-muted-foreground ${className}`}>
+                {children}
+            </p>
+        );
+
+        const CardContent = ({ children, className = "" }) => (
+            <div className={`p-6 pt-0 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Input = ({ className = "", ...props }) => (
+            <input
+                className={`flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+                {...props}
+            />
+        );
+
+        const Label = ({ children, className = "", htmlFor }) => (
+            <label
+                className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}
+                htmlFor={htmlFor}
+            >
+                {children}
+            </label>
+        );
+
+        const Progress = ({ value = 0, className = "" }) => (
+            <div className={`relative h-4 w-full overflow-hidden rounded-full bg-secondary ${className}`}>
+                <div
+                    className="h-full w-full flex-1 bg-primary transition-all duration-300 ease-in-out"
+                    style={{ transform: `translateX(-${100 - value}%)` }}
+                />
+            </div>
+        );
+
+        const Badge = ({ children, variant = "default", className = "" }) => {
+            const variants = {
+                default: "bg-primary text-primary-foreground hover:bg-primary/80",
+                secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                outline: "text-foreground border border-input",
+            };
+            
+            return (
+                <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variants[variant]} ${className}`}>
+                    {children}
+                </div>
+            );
+        };
+
+        const Separator = ({ className = "" }) => (
+            <div className={`shrink-0 bg-border h-[1px] w-full ${className}`} />
+        );
+
+        const ScrollArea = ({ children, className = "" }) => (
+            <div className={`relative overflow-auto scrollbar-hide ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Tabs = ({ children, value, onValueChange, className = "" }) => {
+            return (
+                <div className={`flex flex-col ${className}`}>
+                    <div className="flex border-b">
+                        {React.Children.map(children, (child) => {
+                            if (child.type === TabsTrigger) {
+                                return React.cloneElement(child, { 
+                                    active: child.props.value === value,
+                                    onClick: () => onValueChange(child.props.value)
+                                });
+                            }
+                            return null;
+                        })}
+                    </div>
+                    <div className="mt-2">
+                        {React.Children.map(children, (child) => {
+                            if (child.type === TabsContent && child.props.value === value) {
+                                return child;
+                            }
+                            return null;
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const TabsTrigger = ({ children, value, active, onClick, className = "" }) => {
+            return (
+                <button
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                        active 
+                            ? "border-primary text-primary" 
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                    } ${className}`}
+                    onClick={onClick}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        const TabsContent = ({ children, value, className = "" }) => {
+            return (
+                <div className={className}>
+                    {children}
+                </div>
+            );
+        };
+
+        const Textarea = ({ className = "", ...props }) => (
+            <textarea
+                className={`flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+                {...props}
+            />
+        );
+
+        // Chat Components
+        const ChatMessage = ({ message, isUser }) => (
+            <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                <div className={`flex gap-3 max-w-[80%] ${isUser ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isUser ? 'bg-blue-100' : 'bg-green-100'}`}>
+                        {isUser ? <UserIcon className="w-4 h-4 text-blue-600" /> : <BotIcon className="w-4 h-4 text-green-600" />}
+                    </div>
+                    <div className={`py-2 px-4 rounded-lg chat-message ${isUser ? 'bg-blue-100 text-blue-900' : 'bg-gray-100 text-gray-900'}`}>
+                        {message}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const TypingIndicator = () => (
+            <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                    <BotIcon className="w-4 h-4 text-green-600" />
+                </div>
+                <div className="py-2 px-4 rounded-lg bg-gray-100">
+                    <div className="typing-indicator">
+                        <span>.</span><span>.</span><span>.</span>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Main App Component
+        const PDFDocumentMatcher = () => {
+            const [selectedFile, setSelectedFile] = useState(null);
+            const [searchFolders, setSearchFolders] = useState("database");
+            const [outputFolder, setOutputFolder] = useState("");
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [results, setResults] = useState(null);
+            const [error, setError] = useState("");
+            const [serverStatus, setServerStatus] = useState("checking");
+            const [activeTab, setActiveTab] = useState("matcher");
+            const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+            const [chatMessages, setChatMessages] = useState([]);
+            const [currentQuestion, setCurrentQuestion] = useState("");
+            const [isTyping, setIsTyping] = useState(false);
+            const chatEndRef = useRef(null);
+
+            // Check server connection and API key status on component mount
+            useEffect(() => {
+                checkServerConnection();
+                checkApiKeyStatus();
+            }, []);
+
+            // Scroll to bottom of chat when messages change
+            useEffect(() => {
+                if (chatEndRef.current) {
+                    chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, [chatMessages]);
+
+            const checkServerConnection = async () => {
+                try {
+                    const response = await fetch('/health');
+                    if (response.ok) {
+                        setServerStatus("connected");
+                    } else {
+                        setServerStatus("error");
+                    }
+                } catch (err) {
+                    setServerStatus("error");
+                }
+            };
+
+            const checkApiKeyStatus = async () => {
+                try {
+                    const response = await fetch('/api-key-status');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setApiKeyConfigured(data.configured);
+                    }
+                } catch (err) {
+                    setApiKeyConfigured(false);
+                }
+            };
+
+            const handleFileSelect = (event) => {
+                const file = event.target.files?.[0];
+                if (file && file.type === "application/pdf") {
+                    setSelectedFile(file);
+                    setOutputFolder(file.name.replace(".pdf", "") + "_output");
+                    setError("");
+                    // Reset chat when new file is selected
+                    setChatMessages([]);
+                }
+            };
+
+            const handleProcess = async () => {
+                if (!selectedFile) return;
+
+                setIsProcessing(true);
+                setError("");
+                setResults(null);
+
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('search_folders', searchFolders);
+                formData.append('output_folder', outputFolder);
+
+                try {
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        setResults(data);
+                        // Add welcome message to chat if API key is configured
+                        if (apiKeyConfigured) {
+                            setChatMessages([
+                                {
+                                    text: `I've analyzed the PDF "${selectedFile.name}". You can ask me questions about its requirements or content.`,
+                                    isUser: false
+                                }
+                            ]);
+                        }
+                    } else {
+                        setError(data.error || 'An error occurred while processing the file.');
+                    }
+                } catch (err) {
+                    setError('Failed to connect to the server. Make sure the Flask app is running on http://localhost:5000');
+                    setServerStatus("error");
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+
+            const handleReset = () => {
+                setSelectedFile(null);
+                setResults(null);
+                setError("");
+                setOutputFolder("");
+                setChatMessages([]);
+                setCurrentQuestion("");
+            };
+
+            const handleDownload = (filename) => {
+                window.open(`/download/${filename}`, '_blank');
+            };
+
+            const handleSendQuestion = async () => {
+                if (!currentQuestion.trim() || !results || !apiKeyConfigured) return;
+                
+                // Add user question to chat
+                setChatMessages(prev => [...prev, { text: currentQuestion, isUser: true }]);
+                setIsTyping(true);
+                setCurrentQuestion("");
+                
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            question: currentQuestion,
+                            filename: results.filename
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // Add AI response to chat
+                        setChatMessages(prev => [...prev, { text: data.answer, isUser: false }]);
+                    } else {
+                        setChatMessages(prev => [...prev, { 
+                            text: data.error || "Sorry, I couldn't process your question.", 
+                            isUser: false 
+                        }]);
+                    }
+                } catch (err) {
+                    setChatMessages(prev => [...prev, { 
+                        text: "Error connecting to the server. Please check your connection.", 
+                        isUser: false 
+                    }]);
+                } finally {
+                    setIsTyping(false);
+                }
+            };
+
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendQuestion();
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+                    <div className="max-w-6xl mx-auto space-y-6">
+                        {/* Header */}
+                        <div className="text-center space-y-2">
+                            <h1 className="text-4xl font-bold text-gray-900">PDF Document Matcher</h1>
+                            <p className="text-lg text-gray-600">
+                                Automatically find and organize required documents from your PDF specifications
+                            </p>
+                            
+                            {/* Server Status */}
+                            <div className="flex items-center justify-center gap-2 text-sm">
+                                <Wifi className={`w-4 h-4 ${serverStatus === 'connected' ? 'text-green-500' : serverStatus === 'error' ? 'text-red-500' : 'text-yellow-500'}`} />
+                                <span className={serverStatus === 'connected' ? 'text-green-600' : serverStatus === 'error' ? 'text-red-600' : 'text-yellow-600'}>
+                                    {serverStatus === 'connected' ? 'Server Connected' : 
+                                     serverStatus === 'error' ? 'Server Disconnected' : 
+                                     'Checking Connection...'}
+                                </span>
+                                {serverStatus === 'error' && (
+                                    <Button size="sm" variant="outline" onClick={checkServerConnection}>
+                                        Retry
+                                    </Button>
+                                )}
+                                
+                                {/* API Key Status */}
+                                {serverStatus === 'connected' && (
+                                    <>
+                                        <span className="mx-2">|</span>
+                                        <KeyIcon className={`w-4 h-4 ${apiKeyConfigured ? 'text-green-500' : 'text-yellow-500'}`} />
+                                        <span className={apiKeyConfigured ? 'text-green-600' : 'text-yellow-600'}>
+                                            {apiKeyConfigured ? 'ChatGPT Enabled' : 'ChatGPT Disabled'}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Server Connection Error */}
+                        {serverStatus === 'error' && (
+                            <Card className="border-red-200 bg-red-50">
+                                <CardContent className="p-4">
+                                    <div className="text-red-700">
+                                        <h4 className="font-medium mb-2">Server Connection Failed</h4>
+                                        <p className="text-sm mb-3">
+                                            The Flask backend server is not running. Please follow these steps:
+                                        </p>
+                                        <ol className="text-sm space-y-1 list-decimal list-inside">
+                                            <li>Open a terminal/command prompt</li>
+                                            <li>Navigate to your project folder</li>
+                                            <li>Run: <code className="bg-red-100 px-1 rounded">python app.py</code></li>
+                                            <li>Wait for "Running on http://localhost:5000"</li>
+                                            <li>Refresh this page</li>
+                                        </ol>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* API Key Warning */}
+                        {serverStatus === 'connected' && !apiKeyConfigured && (
+                            <Card className="border-yellow-200 bg-yellow-50">
+                                <CardContent className="p-4">
+                                    <div className="text-yellow-700">
+                                        <h4 className="font-medium mb-2">ChatGPT Feature Disabled</h4>
+                                        <p className="text-sm mb-3">
+                                            To enable the ChatGPT feature, please set up your OpenAI API key:
+                                        </p>
+                                        <ol className="text-sm space-y-1 list-decimal list-inside">
+                                            <li>Create a .env file in the project directory</li>
+                                            <li>Add this line: <code className="bg-yellow-100 px-1 rounded">OPENAI_API_KEY=your_api_key_here</code></li>
+                                            <li>Restart the server</li>
+                                            <li>Refresh this page</li>
+                                        </ol>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Error Display */}
+                        {error && (
+                            <Card className="border-red-200 bg-red-50">
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-2 text-red-700">
+                                        <AlertCircle className="w-5 h-5" />
+                                        <span className="font-medium">Error:</span>
+                                        <span>{error}</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* File Upload Section */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Upload className="w-5 h-5" />
+                                    Upload PDF Document
+                                </CardTitle>
+                                <CardDescription>Select the PDF that contains document requirements</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                                        <input type="file" accept=".pdf" onChange={handleFileSelect} className="hidden" id="pdf-upload" />
+                                        <label htmlFor="pdf-upload" className="cursor-pointer">
+                                            <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                                            {selectedFile ? (
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
+                                                    <p className="text-xs text-gray-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-900">Click to upload PDF</p>
+                                                    <p className="text-xs text-gray-500">or drag and drop</p>
+                                                </div>
+                                            )}
+                                        </label>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="search-folders">Search Folders</Label>
+                                            <Input
+                                                id="search-folders"
+                                                value={searchFolders}
+                                                onChange={(e) => setSearchFolders(e.target.value)}
+                                                placeholder="database, documents, files"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Comma-separated list of folders to search</p>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="output-folder">Output Folder</Label>
+                                            <Input
+                                                id="output-folder"
+                                                value={outputFolder}
+                                                onChange={(e) => setOutputFolder(e.target.value)}
+                                                placeholder="output_folder"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <Button 
+                                        onClick={handleProcess} 
+                                        disabled={!selectedFile || isProcessing || serverStatus !== 'connected'} 
+                                        className="w-full" 
+                                        size="lg"
+                                    >
+                                        {isProcessing ? (
+                                            <>
+                                                <Search className="w-4 h-4 mr-2 animate-spin" />
+                                                Processing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Search className="w-4 h-4 mr-2" />
+                                                Start Processing
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Results Section with Tabs */}
+                        {results && (
+                            <Card>
+                                <CardHeader className="pb-0">
+                                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                        <TabsTrigger value="matcher">
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle className="w-4 h-4" />
+                                                Document Matches
+                                            </div>
+                                        </TabsTrigger>
+                                        <TabsTrigger value="chat" disabled={!apiKeyConfigured}>
+                                            <div className="flex items-center gap-2">
+                                                <ChatIcon className="w-4 h-4" />
+                                                Ask ChatGPT
+                                            </div>
+                                        </TabsTrigger>
+                                        
+                                        <TabsContent value="matcher">
+                                            <CardContent className="pt-6">
+                                                <div className="space-y-4">
+                                                    {/* Summary */}
+                                                    <div className="grid grid-cols-2 gap-4 p-4 bg-green-50 rounded-lg">
+                                                        <div className="text-center">
+                                                            <div className="text-2xl font-bold text-green-600">{results.required_docs.length}</div>
+                                                            <div className="text-sm text-green-700">Document Types Found</div>
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <div className="text-2xl font-bold text-green-600">{results.total_copied}</div>
+                                                            <div className="text-sm text-green-700">Files Copied</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <Separator />
+
+                                                    {/* Required Documents */}
+                                                    <div>
+                                                        <h4 className="font-medium mb-2">Required Document Types:</h4>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {results.required_docs.map((doc, index) => (
+                                                                <Badge key={index} variant="secondary">
+                                                                    {doc}
+                                                                </Badge>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <Separator />
+
+                                                    {/* Matching Files */}
+                                                    <div>
+                                                        <h4 className="font-medium mb-2">Matching Files:</h4>
+                                                        <ScrollArea className="h-64">
+                                                            <div className="space-y-3">
+                                                                {results.matches.map((match, index) => (
+                                                                    <div key={index} className="border rounded-lg p-3">
+                                                                        <div className="flex items-center justify-between mb-2">
+                                                                            <Badge variant="outline">{match.type}</Badge>
+                                                                            <span className="text-xs text-gray-500">{match.files.length} file(s)</span>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            {match.files.map((file, fileIndex) => (
+                                                                                <div key={fileIndex} className="flex items-center gap-2 text-sm">
+                                                                                    <FileText className="w-4 h-4 text-gray-400" />
+                                                                                    <span className="flex-1 truncate">{file}</span>
+                                                                                    <Button 
+                                                                                        size="sm" 
+                                                                                        variant="ghost" 
+                                                                                        className="h-6 w-6 p-0"
+                                                                                        onClick={() => handleDownload(file)}
+                                                                                    >
+                                                                                        <Download className="w-3 h-3" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </ScrollArea>
+                                                    </div>
+
+                                                    {/* Actions */}
+                                                    <div className="flex gap-2 pt-4">
+                                                        <Button className="flex-1">
+                                                            <Download className="w-4 h-4 mr-2" />
+                                                            Open Output Folder
+                                                        </Button>
+                                                        <Button variant="outline" onClick={handleReset}>
+                                                            <Trash2 className="w-4 h-4 mr-2" />
+                                                            Reset
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </TabsContent>
+                                        
+                                        <TabsContent value="chat">
+                                            <CardContent className="pt-6">
+                                                <div className="flex flex-col h-[500px]">
+                                                    {/* Chat Messages */}
+                                                    <ScrollArea className="flex-1 p-4 bg-gray-50 rounded-lg mb-4">
+                                                        <div className="space-y-4">
+                                                            {chatMessages.map((msg, index) => (
+                                                                <ChatMessage 
+                                                                    key={index} 
+                                                                    message={msg.text} 
+                                                                    isUser={msg.isUser} 
+                                                                />
+                                                            ))}
+                                                            {isTyping && <TypingIndicator />}
+                                                            <div ref={chatEndRef} />
+                                                        </div>
+                                                    </ScrollArea>
+                                                    
+                                                    {/* Chat Input */}
+                                                    <div className="flex gap-2">
+                                                        <Textarea 
+                                                            placeholder="Ask a question about the PDF content..." 
+                                                            value={currentQuestion}
+                                                            onChange={(e) => setCurrentQuestion(e.target.value)}
+                                                            onKeyDown={handleKeyPress}
+                                                            className="flex-1 min-h-[60px]"
+                                                        />
+                                                        <Button 
+                                                            onClick={handleSendQuestion}
+                                                            disabled={!currentQuestion.trim() || isTyping}
+                                                            className="self-end"
+                                                        >
+                                                            <Send className="w-4 h-4 mr-2" />
+                                                            Send
+                                                        </Button>
+                                                    </div>
+                                                    
+                                                    <p className="text-xs text-gray-500 mt-2 text-center">
+                                                        Ask questions about the PDF content, requirements, or matching documents.
+                                                    </p>
+                                                </div>
+                                            </CardContent>
+                                        </TabsContent>
+                                    </Tabs>
+                                </CardHeader>
+                            </Card>
+                        )}
+
+                        {/* Help Card */}
+                        {!results && !isProcessing && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <AlertCircle className="w-5 h-5 text-blue-500" />
+                                        Setup Instructions
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3 text-sm text-gray-600">
+                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                        <h5 className="font-medium text-blue-900 mb-2">Quick Setup:</h5>
+                                        <ol className="space-y-1 list-decimal list-inside text-blue-800">
+                                            <li>Put your searchable documents in the <code className="bg-blue-100 px-1 rounded">database</code> folder</li>
+                                            <li>Upload a PDF with document requirements</li>
+                                            <li>Click "Start Processing"</li>
+                                            {apiKeyConfigured && (
+                                                <li>Use the "Ask ChatGPT" tab to ask questions about the PDF</li>
+                                            )}
+                                        </ol>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <h5 className="font-medium">How it works:</h5>
+                                        <div className="flex gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">1</div>
+                                            <p>Upload a PDF containing document requirements</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">2</div>
+                                            <p>System extracts and identifies required document types</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">3</div>
+                                            <p>Searches your folders for matching documents</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">4</div>
+                                            <p>Copies all matching files to output folder</p>
+                                        </div>
+                                        {apiKeyConfigured && (
+                                            <div className="flex gap-3">
+                                                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">5</div>
+                                                <p>Ask ChatGPT questions about the PDF content</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<PDFDocumentMatcher />, document.getElementById('root'));
+    </script>
+</body>
+</html>
